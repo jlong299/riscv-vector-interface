@@ -3,6 +3,8 @@ FVI is a high-performance interface designed to connect a RISC-V vector core wit
 
 > Version: 0.1.0 (draft)
 
+@import "image/FVI.png"
+
 # List of all interface signals
 **Instruction dispatch**
 | Name | Direction | Width (bits) | Description |
