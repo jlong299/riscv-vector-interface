@@ -39,20 +39,46 @@ FVI is a high-performance interface designed to connect a RISC-V vector core wit
 **Commit**
 | Name | Direction | Width (bits) | Description |
 | --- | --- | --- | --- |
-| vec_gRob_idx_can_commit | S -> V | WRobIdx | Youngest global ROB of vector instruction that can commit |
-| valid_can_commit | S -> V | 1 | Valid of vec_gRob_idx_can_commit |
-| vec_gRob_idx_committed | V -> S | WRobIdx | Youngest global ROB of vector instruction that has committed |
-| valid_committed | V -> S | 1 | Valid of vec_gRob_idx_committed |
+| vec_rob_idx_can_commit | S -> V | WRobIdx | Youngest ROB index of vector instruction that can commit |
+| valid_can_commit | S -> V | 1 | Valid of vec_rob_idx_can_commit |
+| vec_rob_idx_committed | V -> S | WRobIdx | Youngest ROB index of vector instruction that has committed |
+| valid_committed | V -> S | 1 | Valid of vec_rob_idx_committed |
 
 **Redirection**
 | Name | Direction | Width (bits) | Description |
 | --- | --- | --- | --- |
-| vec_gRob_idx_redirect_req | S -> V | WRobIdx | Redirection target global ROB of vector instruction |
-| valid_redirect_req | S -> V | 1 | Valid of vec_gRob_idx_redirect_req |
-| vec_gRob_idx_redirect_resp | V -> S | WRobIdx | Inform scalar core the completion of vector redirection |
-| valid_redirect_resp | V -> S | 1 | Valid of valid_redirect_resp |
+| vec_rob_idx_redirect_req | S -> V | WRobIdx | Redirection target ROB index of vector instruction |
+| valid_redirect_req | S -> V | 1 | Valid of vec_rob_idx_redirect_req |
+| vec_rob_idx_redirect_resp | V -> S | WRobIdx | Inform scalar core the completion of vector redirection |
+| valid_redirect_resp | V -> S | 1 | Valid of vec_rob_idx_redirect_resp |
 
+**Load**
+| Name | Direction | Width (bits) | Description |
+| --- | --- | --- | --- |
+| sop_ld_req | V -> LSU | 1 | Start of a vector load request packet |
+| eop_ld_req | V -> LSU | 1 | End of a vector load request packet |
+| valid_ld_req | V -> LSU | 1 | Valid of the payload of the load request packet |
+| ready_ld_req | LSU -> V | 1 | LSU is ready to receive the next payload of the request packet |
+| payload_ld_req | V -> LSU | WLdPayload | Payload of the request, such as vl, mask, and indexed addresses |
+| sop_ld_resp | LSU -> V | 1 | Start of a vector load response packet |
+| eop_ld_resp | LSU -> V | 1 | End of a vector load response packet |
+| valid_ld_resp | LSU -> V | 1 | Valid of the payload of the load response packet |
+| rob_idx_ld_resp | LSU -> V | WRobIdx | ROB index of the response packet |
+| data_ld_resp | LSU -> V | VLEN | Load data that corresponds to a single vector register |
+| mask_ld_resp | LSU -> V | vlenb | Mask of data_ld_resp |
+| reg_idx_ld_resp | LSU -> V | 3 | Index of load register inside the register group|
 
+**Store**
+| Name | Direction | Width (bits) | Description |
+| --- | --- | --- | --- |
+| sop_st_req | V -> LSU | 1 | Start of a vector store request packet |
+| eop_st_req | V -> LSU | 1 | End of a vector store request packet |
+| valid_st_req | V -> LSU | 1 | Valid of the payload of the store request packet |
+| ready_st_req | LSU -> V | 1 | LSU is ready to receive the next payload of the request packet |
+| payload_st_req | V -> LSU | WLdPayload | Payload of the request, such as vl, mask, and indexed addresses |
+| data_st_req | V -> LSU | VLEN | Store data that corresponds to a single vector register |
+| reg_idx_st_req | V -> LSU | 3 | Index of store register inside the register group|
+| can_commit_st_resp | LSU -> V | 1 | Store instruction can be committed (ordered) |
 
 
 
@@ -61,3 +87,4 @@ Variable parameters:
 NDispatch
 rob_idx/rob_idx_vsetvl can be NDelayRobIdx later. NDelayRobIdx should be constant.
 
+sop_ld_req: 1) allocate phy reg 2) wait for old_vd if needed
