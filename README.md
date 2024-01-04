@@ -75,7 +75,7 @@ FVI is a high-performance interface designed to connect a RISC-V vector core wit
 | eop_st_req | V -> LSU | 1 | End of a vector store request packet |
 | valid_st_req | V -> LSU | 1 | Valid of the payload of the store request packet |
 | ready_st_req | LSU -> V | 1 | LSU is ready to receive the next payload of the request packet |
-| payload_st_req | V -> LSU | WLdPayload | Payload of the request, such as vl, mask, and indexed addresses |
+| payload_st_req | V -> LSU | WStPayload | Payload of the request, such as vl, mask, and indexed addresses |
 | data_st_req | V -> LSU | VLEN | Store data that corresponds to a single vector register |
 | reg_idx_st_req | V -> LSU | 3 | Index of store register inside the register group|
 | can_commit_st_resp | LSU -> V | 1 | Store instruction can be committed (ordered) |
