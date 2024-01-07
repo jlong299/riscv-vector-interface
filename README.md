@@ -1,7 +1,7 @@
 # FVI (Flexible RISC-V Vector Interface)
 FVI is a high-performance interface designed to connect a RISC-V vector core with a scalar core. Primarily, it is aimed at schemes involving **out-of-order** vector and scalar cores. However, it is also compatible with in-order architectures.
 
-> Version: 0.1.0 (draft)
+> Version: 0.0.8 (draft)
 
 The diagram below illustrates all FVI signal groups, as indicated by the colored arrows. FVI operates on the principle that the Load-Store Unit (LSU) manages the load/store operations of both scalar and vector cores.
 
@@ -46,9 +46,9 @@ The diagram below illustrates all FVI signal groups, as indicated by the colored
 **Commit**
 | Name | Direction | Width (bits) | Description |
 | --- | --- | --- | --- |
-| vec_rob_idx_can_commit | S -> V | WRobIdx | Youngest ROB index of vector instruction that can commit |
+| vec_rob_idx_can_commit | S -> V | WRobIdx | Youngest ROB index of vector instructions that can commit |
 | valid_can_commit | S -> V | 1 | Valid of vec_rob_idx_can_commit |
-| vec_rob_idx_committed | V -> S | WRobIdx | Youngest ROB index of vector instruction that has committed |
+| vec_rob_idx_committed | V -> S | WRobIdx | Youngest ROB index of vector instructions that has committed |
 | valid_committed | V -> S | 1 | Valid of vec_rob_idx_committed |
 
 **Redirection**
@@ -56,7 +56,7 @@ The diagram below illustrates all FVI signal groups, as indicated by the colored
 | --- | --- | --- | --- |
 | vec_rob_idx_redirect_req | S -> V | WRobIdx | Redirection target ROB index of vector instruction |
 | valid_redirect_req | S -> V | 1 | Valid of vec_rob_idx_redirect_req |
-| vec_rob_idx_redirect_resp | V -> S | WRobIdx | Inform scalar core the completion of vector redirection |
+| vec_rob_idx_redirect_resp | V -> S | WRobIdx | Notify the scalar core upon the completion of vector redirection |
 | valid_redirect_resp | V -> S | 1 | Valid of vec_rob_idx_redirect_resp |
 
 **Load**
@@ -87,7 +87,6 @@ The diagram below illustrates all FVI signal groups, as indicated by the colored
 | reg_idx_st_req | V -> LSU | 3 | Index of store register inside the register group|
 | can_commit_st_resp | LSU -> V | 1 | Store instruction can be committed (ordered) |
 
-# Acronym
 
 # Explanation of FVI signals
 ## (1) Instruction dispatch
@@ -112,11 +111,11 @@ The *valid* signal denotes the validity of dispatched instructions. The count of
 
 The *ready* signal is an indicator of the vector core's readiness to receive instructions.
 
-Instructions are received from the scalar core by the vector core only when the corresponding valid and ready signals are both set to 1.
+Instructions are received by the vector core only when the corresponding valid and ready signals are both set to 1.
 
 ## (2) Delayed data
 
-These signals may experience a delay from the corresponding instruction dispatch as they may not be initially available.
+These signals may experience a delay from the relevant "instruction dispatch" group as they may not be initially available.
 
 The vtype signal contains the values of the vtype CSR, as illustrated below.
 | Member of vtype | Width (bits) | Position |
@@ -136,14 +135,6 @@ The *rs* signal encompasses the scalar operands required by the vector instructi
 > Note: the vector load/store instruction does not require the *rs* signal.
 
 ## (3) Complete
-| Name | Direction | Width (bits) | Description |
-| --- | --- | --- | --- |
-| rob_idx | V -> S | NComplete x WRobIdx | ROB index of each completed instruction |
-| info_wb | V -> S | NComplete x 7 | Write-back information: illegal/fflag/vxsat |
-| valid | V -> S | NComplete | Valid of complete instructions |
-| rd | V -> S | 64 | Scalar destination register |
-| rob_idx_rd | V -> S | WRobIdx | ROB index of rd |
-| valid_rd | V -> S | 1 | Valid of rd |
 
 "Complete" signals denote instructions that have been executed in the vector core.
 
@@ -158,15 +149,32 @@ The *info_wb* signal that corresponds to the *rob_idx* comprises the following s
 
 The *rd* signal is the value of scalar destination register produced by the vector instruction.
 
+## (4) Commit
 
+FVI employs a decoupled approach for instruction commitment, allowing the scalar and vector cores to commit their instructions concurrently. For instance, the scalar core communicates the youngest ROB index of the vector instruction that it can commit (*vec_rob_idx_can_commit*) to the vector core. Following this, the scalar core's commitment procedure can either proceed or pause, depending on whether it needs to wait for the vector core to catch up.
 
+> Note:The ROB in the scalar core is a global ROB encompassing all scalar and vector instructions. When a vector instruction in this global ROB is ready to be committed, it can commit within one clock cycle. However, the actual commitment of this vector instruction on the vector core side may take several clock cycles to accomplish, depending on the specific implementation. As a result, the commitment pace of the scalar core can outpace that of the vector core, potentially improving the speed of instruction commitment.
 
+The vector sends *vec_rob_idx_committed* to the scalar core to indicate the youngest ROB index of the vector instruction that it has committed.
 
-# Todo
-Variable parameters:
-NDispatch
-rob_idx/rob_idx_vsetvl can be NDelayRobIdx later. NDelayRobIdx should be constant.
+> Note: The scalar core is not required to send *vec_rob_idx_can_commit* at every clock cycle. Similarly, the vector core is not required to transmit *vec_rob_idx_committed* at each clock cycle.
 
-nested redirection
+## (5) Redirection
 
-sop_ld_req: 1) allocate phy reg 2) wait for old_vd if needed
+When a specific event, such as branch misprediction, occurs, the processor must revert to the relevant instruction and fetch the correct subsequent instructions. This procedure is referred to as redirection.
+
+Similar to the commitment approach, FVI's redirection employs a decoupled structure. The scalar core notifies the vector core about the ROB index of the vector instruction to be redirected to (*vec_rob_idx_redirect_req*). Upon completion of the vector redirection, the vector core responds with the *vec_rob_idx_redirect_resp* signal.
+
+The redirection interface of FVI offers two key advantages:
+
+1. Flexibility: The scalar core and vector core can employ different redirection strategies. For instance, the scalar core might utilize a roll-back or snapshot-based redirection method, while the vector core might opt for a flush strategy for redirection.
+
+2. Speed. The scalar core and the vector core can perform redirection simultaneously.
+
+Please note that for nested redirection requests, the vector core only needs to respond to the last request.
+
+## (6) Load
+To be done ..
+
+## (7) Store
+To be done ..
